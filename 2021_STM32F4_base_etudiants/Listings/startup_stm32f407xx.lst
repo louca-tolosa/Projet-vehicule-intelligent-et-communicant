@@ -883,13 +883,13 @@ erwork --depend=.\objects\startup_stm32f407xx.d -o.\objects\startup_stm32f407xx
 .o -IU:\2023_STM32F4_base_ADC\2021_STM32F4_base_etudiants\RTE -IU:\2023_STM32F4
 _base_ADC\2021_STM32F4_base_etudiants\RTE\Device\STM32F407VGTx -IC:\Keil_v5\ARM
 \PACK\ARM\CMSIS\5.6.0\CMSIS\Core\Include -IC:\Keil_v5\ARM\PACK\ARM\CMSIS\5.6.0\
-CMSIS\RTOS\RTX\INC -IC:\Keil_v5\ARM\PACK\Keil\MDK-Middleware\7.0.0\Board -IC:\K
-eil_v5\ARM\PACK\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Inc
-lude -IC:\Keil_v5\ARM\PACK\Keil\STM32F4xx_DFP\2.14.0\Drivers\STM32F4xx_HAL_Driv
-er\Inc --predefine="__RTX SETA 1" --predefine="__EVAL SETA 1" --predefine="__UV
-ISION_VERSION SETA 517" --predefine="_RTE_ SETA 1" --predefine="STM32F407xx SET
-A 1" --list=.\listings\startup_stm32f407xx.lst RTE\Device\STM32F407VGTx\startup
-_stm32f407xx.s
+CMSIS\Driver\Include -IC:\Keil_v5\ARM\PACK\ARM\CMSIS\5.6.0\CMSIS\RTOS\RTX\INC -
+IC:\Keil_v5\ARM\PACK\Keil\MDK-Middleware\7.0.0\Board -IC:\Keil_v5\ARM\PACK\Keil
+\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include -IC:\Keil_v5\AR
+M\PACK\Keil\STM32F4xx_DFP\2.14.0\Drivers\STM32F4xx_HAL_Driver\Inc --predefine="
+__RTX SETA 1" --predefine="__EVAL SETA 1" --predefine="__UVISION_VERSION SETA 5
+17" --predefine="_RTE_ SETA 1" --predefine="STM32F407xx SETA 1" --list=.\listin
+gs\startup_stm32f407xx.lst RTE\Device\STM32F407VGTx\startup_stm32f407xx.s
 
 
 

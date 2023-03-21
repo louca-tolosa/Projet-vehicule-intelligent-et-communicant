@@ -42,6 +42,7 @@
 #include "Board_LED.h"                  // ::Board Support:LED
 #include "stm32f4xx_hal.h"              // Keil::Device:STM32Cube HAL:Common
 #include "cmsis_os.h"                   // ARM::CMSIS:RTOS:Keil RTX
+#include "Driver_SPI.h"                 // ::CMSIS Driver:SPI
 
 ADC_HandleTypeDef myADC2Handle; 
 
@@ -149,6 +150,12 @@ void ADCthread(void const* argument);
 osThreadId ID_ADCthread;
 osThreadDef(ADCthread, osPriorityNormal, 1, 0);
 
+extern ARM_DRIVER_SPI Driver_SPI1; 
+
+void mySPI_Thread (void const *argument);                             // thread function
+osThreadId tid_mySPI_Thread;                                          // thread id
+osThreadDef (mySPI_Thread, osPriorityHigh, 1, 0);                   // thread object
+
 void ADCthread(void const* argument)
 {
 	short sortie;
@@ -157,8 +164,7 @@ void ADCthread(void const* argument)
 		sortie = Conversion_AD();
 		if (sortie>=0 && sortie<2000)
 		{
-			LED_Off(1); LED_Off(2); LED_Off(3); 
-			LED_On (1);
+			osSignalSet(tid_mySPI_Thread, 0x02);
 		}
 		else if (sortie>2000 && sortie<3500)
 		{
@@ -173,6 +179,63 @@ void ADCthread(void const* argument)
   }
 }
 	
+
+
+void mySPI_callback(uint32_t event)
+{
+	switch (event) {
+		
+		
+		case ARM_SPI_EVENT_TRANSFER_COMPLETE  : 	 osSignalSet(tid_mySPI_Thread, 0x01);
+																							break;
+		
+		default : break;
+	}
+}
+
+void Init_SPI(void){
+	Driver_SPI1.Initialize(mySPI_callback);
+	Driver_SPI1.PowerControl(ARM_POWER_FULL);
+	Driver_SPI1.Control(ARM_SPI_MODE_MASTER | 
+											ARM_SPI_CPOL1_CPHA1 | 
+											ARM_SPI_MSB_LSB | 
+											ARM_SPI_SS_MASTER_UNUSED |
+											ARM_SPI_DATA_BITS(8), 1000000);
+	Driver_SPI1.Control(ARM_SPI_CONTROL_SS, ARM_SPI_SS_INACTIVE);
+}
+
+void mySPI_Thread (void const *argument) {
+	osEvent evt;
+	char allume[22+16];
+	char ferme[22+16];
+	int i, nb_led;
+	
+	for (i=0;i<4;i++){
+		allume[i] = 0;
+	}
+	
+	// 4 LED bleues
+		for (nb_led = 0; nb_led <4;nb_led++){
+			allume[4+nb_led*4]=0xff;
+			allume[5+nb_led*4]=0xff;
+			allume[6+nb_led*4]=0x00;
+			allume[7+nb_led*4]=0x00;
+			}
+
+		// end
+		allume[20] = 0xff; allume[21] = 0xff;	allume[22] = 0xff; allume[23] = 0xff;
+		
+	
+			
+	while (1) {
+		osSignalWait(0x02, osWaitForever);
+		Driver_SPI1.Send(allume,24); 
+    evt = osSignalWait(0x01, osWaitForever);	// sommeil fin emission
+		osDelay(1000);
+  }
+}
+
+
 int main(void)
 {
   /* STM32F4xx HAL library initialization:
@@ -186,6 +249,8 @@ int main(void)
      */
   HAL_Init();
 	LED_Initialize();
+	Init_SPI();
+	
   /* Configure the system clock to 168 MHz */
   SystemClock_Config();
   SystemCoreClockUpdate();
@@ -201,6 +266,7 @@ int main(void)
   /* Create thread functions that start executing, 
   Example: osThreadNew(app_main, NULL, NULL); */
 	ID_ADCthread = osThreadCreate(osThread(ADCthread), NULL);
+	tid_mySPI_Thread = osThreadCreate (osThread(mySPI_Thread), NULL);
 
   /* Start thread execution */
   osKernelStart();
