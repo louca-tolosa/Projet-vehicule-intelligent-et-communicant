@@ -146,49 +146,29 @@ short Conversion_AD()
 	return entree;
 }
 
+
 void ADCthread(void const* argument);
 osThreadId ID_ADCthread;
 osThreadDef(ADCthread, osPriorityNormal, 1, 0);
 
 extern ARM_DRIVER_SPI Driver_SPI1; 
 
-void mySPI_Thread (void const *argument);                             // thread function
+void mySPI_Thread (void const *argument);                             // thread function pour allumer les leds
 osThreadId tid_mySPI_Thread;                                          // thread id
-osThreadDef (mySPI_Thread, osPriorityHigh, 1, 0);                   // thread object
+osThreadDef (mySPI_Thread, osPriorityNormal, 1, 0);                   // thread object
 
-void ADCthread(void const* argument)
-{
-	short sortie;
-	while (1)
-  {
-		sortie = Conversion_AD();
-		if (sortie>=0 && sortie<2000)
-		{
-			osSignalSet(tid_mySPI_Thread, 0x02);
-		}
-		else if (sortie>2000 && sortie<3500)
-		{
-			LED_Off(1); LED_Off(2); LED_Off(3); 
-			LED_On (2);
-		}
-		else 
-		{
-			LED_Off(1); LED_Off(2); LED_Off(3); 
-			LED_On (3);
-		}
-  }
-}
-	
+void mySPI_Thread2 (void const *argument);                             // thread function pour l'éteindre
+osThreadId tid_mySPI_Thread2;                                          // thread id
+osThreadDef (mySPI_Thread2, osPriorityNormal, 1, 0);                   // thread object
 
 
 void mySPI_callback(uint32_t event)
 {
 	switch (event) {
-		
-		
+
 		case ARM_SPI_EVENT_TRANSFER_COMPLETE  : 	 osSignalSet(tid_mySPI_Thread, 0x01);
-																							break;
-		
+																								osSignalSet(tid_mySPI_Thread2, 0x01);
+																								break;
 		default : break;
 	}
 }
@@ -204,36 +184,7 @@ void Init_SPI(void){
 	Driver_SPI1.Control(ARM_SPI_CONTROL_SS, ARM_SPI_SS_INACTIVE);
 }
 
-void mySPI_Thread (void const *argument) {
-	osEvent evt;
-	char allume[22+16];
-	char ferme[22+16];
-	int i, nb_led;
-	
-	for (i=0;i<4;i++){
-		allume[i] = 0;
-	}
-	
-	// 4 LED bleues
-		for (nb_led = 0; nb_led <4;nb_led++){
-			allume[4+nb_led*4]=0xff;
-			allume[5+nb_led*4]=0xff;
-			allume[6+nb_led*4]=0x00;
-			allume[7+nb_led*4]=0x00;
-			}
 
-		// end
-		allume[20] = 0xff; allume[21] = 0xff;	allume[22] = 0xff; allume[23] = 0xff;
-		
-	
-			
-	while (1) {
-		osSignalWait(0x02, osWaitForever);
-		Driver_SPI1.Send(allume,24); 
-    evt = osSignalWait(0x01, osWaitForever);	// sommeil fin emission
-		osDelay(1000);
-  }
-}
 
 
 int main(void)
@@ -267,6 +218,7 @@ int main(void)
   Example: osThreadNew(app_main, NULL, NULL); */
 	ID_ADCthread = osThreadCreate(osThread(ADCthread), NULL);
 	tid_mySPI_Thread = osThreadCreate (osThread(mySPI_Thread), NULL);
+	tid_mySPI_Thread2 = osThreadCreate (osThread(mySPI_Thread2), NULL);
 
   /* Start thread execution */
   osKernelStart();
@@ -387,3 +339,87 @@ void assert_failed(uint8_t* file, uint32_t line)
   */ 
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+
+
+void ADCthread(void const* argument)
+{
+	short sortie;
+	while (1)
+  {
+		sortie = Conversion_AD();
+		if (sortie>=0 && sortie<2000)
+		{
+			osSignalSet(tid_mySPI_Thread, 0x02);
+		}
+		else if (sortie>2000 && sortie<3000)
+		{
+			LED_Off(1); LED_Off(2); LED_Off(3); 
+			LED_On (2);
+		}
+		else 
+		{
+			osSignalSet(tid_mySPI_Thread2, 0x02);
+		}
+  }
+}
+
+void mySPI_Thread (void const *argument) {
+	//osEvent evt;
+	char tab[24];
+	int i, nb_led;
+	
+	for (i=0;i<4;i++){
+		tab[i] = 0;
+	}
+	// 4 LED bleues
+		for (nb_led = 0; nb_led <4;nb_led++){
+			tab[4+nb_led*4]=0xff;
+			tab[5+nb_led*4]=0xff;
+			tab[6+nb_led*4]=0x00;
+			tab[7+nb_led*4]=0xff;
+			}
+		// end
+		tab[20] = 0xff; tab[21] = 0xff; tab[22] = 0xff; tab[23] = 0xff;
+	
+	while (1) {
+		osSignalWait(0x02, osWaitForever);
+		Driver_SPI1.Send(tab,24); 
+    osSignalWait(0x01, osWaitForever);	// sommeil fin emission
+		osDelay(1000);
+  }
+}
+
+void mySPI_Thread2 (void const *argument) {
+	//osEvent evt;
+	char tab[24];
+	int i, nb_led;
+	
+	for (i=0;i<4;i++){
+		tab[i] = 0;
+	}
+	
+	// 4 LED éteint
+		for (nb_led = 0; nb_led <4;nb_led++){
+		tab[4+nb_led*4]=0x0E;
+		tab[5+nb_led*4]=0x00;
+		tab[6+nb_led*4]=0x00;
+		tab[7+nb_led*4]=0x00;
+		}
+
+//	tab[4] = 0xff; tab[5] = 0x00;	tab[6] = 0x00; tab[7] = 0xff;																			//pour tester
+//	tab[8] = 0xE0 | 0xff ; tab[9] = 0x55;	tab[10] = 0x00; tab[11] = 0x55;
+//	tab[12] = 0xff; tab[13] = 0x00;	tab[14] = 0xff; tab[15] = 0x00;
+//	tab[16] = 0xE0 | 0x00; tab[17] = 0x00;	tab[18] = 0x00; tab[19] = 0x00;
+
+		// end
+	tab[20] = 0xff; tab[21] = 0xff; tab[22] = 0xff; tab[23] = 0xff;
+			
+	while (1) {
+		osSignalWait(0x02, osWaitForever);
+		Driver_SPI1.Send(tab,24); 
+    osSignalWait(0x01, osWaitForever);	// sommeil fin emission
+		osDelay(1000);
+  }
+}
+
+	
