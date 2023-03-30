@@ -1,0 +1,6 @@
+au demarrage = son de demarrage de voiture (piste 1)
+bruit de moteur continue = piste moteur (piste 2)
+klaxon = (piste 3)
+centralisation des porte = (piste 4)
+alarme = (piste 5)
+clignotants = (piste 6)
