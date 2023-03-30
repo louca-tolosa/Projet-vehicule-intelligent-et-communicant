@@ -1,0 +1,100 @@
+#include "Driver_USART.h"               // ::CMSIS Driver:USART
+#include "Board_GLCD.h"                 // ::Board Support:Graphic LCD
+#include "GLCD_Config.h"                // Keil.MCB1700::Board Support:Graphic LCD
+#include "stdio.h"
+#include "GPIO.h"
+
+extern GLCD_FONT GLCD_Font_6x8;
+extern GLCD_FONT GLCD_Font_16x24;
+extern ARM_DRIVER_USART Driver_USART1;
+
+void pwm(int dc);
+
+void Init_UART(void){
+	Driver_USART1.Initialize(NULL);
+	Driver_USART1.PowerControl(ARM_POWER_FULL);
+	Driver_USART1.Control(	ARM_USART_MODE_ASYNCHRONOUS |
+							ARM_USART_DATA_BITS_8		|
+							ARM_USART_STOP_BITS_1		|
+							ARM_USART_PARITY_NONE		|
+							ARM_USART_FLOW_CONTROL_NONE,
+							115200);
+	Driver_USART1.Control(ARM_USART_CONTROL_TX,1);
+	Driver_USART1.Control(ARM_USART_CONTROL_RX,1);
+}
+
+int main (void){
+	uint8_t tab[2];
+
+	
+	int i;
+	
+	Init_UART();
+	GLCD_Initialize();
+	GLCD_ClearScreen();
+	GLCD_SetFont(&GLCD_Font_16x24);
+	Initialise_GPIO();
+	tab[0]= 0xA5;
+	tab[1] = 0x21;
+	
+	pwm(41);
+	while (1){
+	
+	
+		while(Driver_USART1.GetStatus().tx_busy == 1); // attente buffer TX vide
+		Driver_USART1.Send(tab, 2);
+		for(i=0;i<10000;i++);
+		/*
+		Driver_USART1.Receive(tab,8); //on n'a besoin que d'un caractère
+		while(Driver_USART1.GetRxCount()<1);
+		GLCD_DrawString(50,50,(char *)tab);
+	*/
+		
+		
+		
+	}	
+	return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void pwm(int dc)
+{
+	
+	
+	LPC_SC->PCONP = LPC_SC->PCONP | 0x00000040;       // enable PWM1
+
+			
+	LPC_PWM1 -> MCR |= (2<<0);			// Compteur relancé quand MR0 repasse à 0
+	
+	LPC_PWM1->PR = 0; // prescaler
+	LPC_PWM1->MR0 = 999; // freqs du PWM vaut 25kHz
+	
+	
+	LPC_PINCON->PINSEL4 = LPC_PINCON->PINSEL4| 0x00000010;	// Validation des sorties PWM1.3 voir la table 84
+	LPC_PWM1->LER |= 0x0000000F;
+	LPC_PWM1->PCR = LPC_PWM1->PCR | 0x00000800;	//Autorise la sortie PWM3 bit 11 – voir table 452
+	
+	LPC_PWM1->MR3 = 10*dc;      //On règle le duty cycle à dc% de PMW1.3 sur la broche P2.2
+	
+	LPC_PWM1 -> TCR = 1;
+	
+	
+	
+}
