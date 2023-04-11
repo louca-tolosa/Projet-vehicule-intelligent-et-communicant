@@ -1,15 +1,17 @@
 #include "Driver_USART.h"               // ::CMSIS Driver:USART
+#include <LPC17xx.h>   
+#include "GPIO.h"
+#include <time.h>
 
 extern ARM_DRIVER_USART Driver_USART1;
 
-#include "LPC17xx.h"                    // Device header
-#include "GPIO_LPC17xx.h"               // Keil::Device:GPIO
-#include "cmsis_os.h"                   // ARM::CMSIS:RTOS:Keil RTX
+unsigned char buffer[64];       // buffer array for data receive over serial port
+int count = 0;                    // counter for buffer array
 
-void tache1(void const *argument); //prototype
-osThreadId ID_tache1;
-osThreadDef (tache1, osPriorityNormal, 1, 0); //1 instance,taille pile par défaut
+void delay(int milliseconds);
 
+#define LED P2_0     // Led is connected to P2.0
+#define Num_LED 1
 
 void Init_UART(void){
 	Driver_USART1.Initialize(NULL);
@@ -24,33 +26,38 @@ void Init_UART(void){
 	Driver_USART1.Control(ARM_USART_CONTROL_RX,1);
 }
 
-int main (void){
-	
-	
-	Init_UART();
-	osKernelInitialize ();
-	
-	ID_tache1 = osThreadCreate ( osThread ( tache1 ), NULL ) ; //changer le nul si plusieurs instances
-
-	
-	osDelay(osWaitForever) ;
-	return 0;
+void delay(int milliseconds)
+{
+    clock_t start_time = clock();
+    while (clock() < start_time + milliseconds);
 }
 
 
-void tache1(void const *argument) {
-	char tab_W[64];
-	char tab_R[64];
-	
-//	while(Driver_USART1.GetStatus().tx_busy == 1); // attente buffer TX vide
-//	Driver_USART1.Send(tab_W,16);
+int main (void){
+	uint8_t tab[50];
+	Init_UART();
+	Initialise_GPIO();
+
+	while (1){
+		//envoi
+		while(Driver_USART1.GetStatus().tx_busy == 1); // attente buffer TX vide
+		Driver_USART1.Send("\n\rHello World!!!",16);
 		
-	Driver_USART1.Receive(tab_R,12);
-	while (Driver_USART1.GetRxCount() <1) ; // on attend que 1 case soit pleine
-	
-	// ID tag : 0D0093641BE1 (en ASCII)
-	if((tab_R[0]==0x30) & (tab_R[1]==0x44) & (tab_R[2]==0x30) & (tab_R[3]==0x30) & (tab_R[4]==0x39) & (tab_R[5]==0x33) & (tab_R[6]==0x36) & (tab_R[7]==0x34) & (tab_R[8]==0x31) & (tab_R[9]==0x42) & (tab_R[10]==0x45) & (tab_R[11]==0x31)){
+		// reception, récupération de la chaine qui se complète au fur et à mesure
+		Driver_USART1.Receive(tab,50); // la fonction remplira jusqu'à 50 cases
+		while (Driver_USART1.GetRxCount() <1 ) // on attend que 1 case soit pleine
 		
-		
-	}
+		//if(){ //carte détectée
+			//allumer LED
+			
+        /* Turn On all the leds and wait for 100ms */ 
+        Allumer_1LED(Num_LED);     // Make all the Port pin as high  
+        delay(100);
+
+        Eteindre_1LED(Num_LED);     // Make all the Port pin as low  
+        delay(100);
+    
+		//}
+	}	
+	return 0;
 }
