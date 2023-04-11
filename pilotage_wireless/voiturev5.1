@@ -1,0 +1,405 @@
+/*----------------------------------------------------------------------------
+ * CMSIS-RTOS 'main' function template
+ *---------------------------------------------------------------------------*/
+
+#define osObjectsPublic                     // define objects in main module
+#include "osObjects.h"                      // RTOS object definitions
+#include "GPIO_LPC17xx.h"               // Keil::Device:GPIO
+#include "LPC17xx.h"                    // Device header
+#include "PIN_LPC17xx.h"                // Keil::Device:PIN
+#include "Driver_I2C.h"                 // ::CMSIS Driver:I2C
+#include "Board_GLCD.h"                 // ::Board Support:Graphic LCD
+#include "GLCD_Config.h"                // Keil.MCB1700::Board Support:Graphic LCD
+#include "stdio.h"
+#include "Driver_USART.h"               // ::CMSIS Driver:USART
+
+
+#define registreCommand1	0xF0
+#define registreCommand2	0x55
+#define registreCommand3	0x00
+#define SLAVE_I2C_ADDR	  0x52
+#define registreX	0x00
+#define registreY	0x01
+
+extern ARM_DRIVER_I2C Driver_I2C0;
+extern GLCD_FONT GLCD_Font_6x8;
+extern GLCD_FONT GLCD_Font_16x24;
+extern ARM_DRIVER_USART Driver_USART1;
+
+osThreadId ID_tache1,ID_tache2,ID_tache3,ID_tache4,ID_tache5,ID_tache6;
+
+osMailQId ID_BAL;
+osMailQDef (Bal1,1,char);
+
+char direction;
+int level=0;
+
+void uart_nun (uint32_t event){
+	
+	switch (event)
+	{
+		case ARM_USART_EVENT_RECEIVE_COMPLETE:
+			osSignalSet(ID_tache6,0x0001);
+		break;
+	}
+}
+
+//void tache1(void const* argument)
+//{
+//	uint8_t tab[10];
+//	while(1)
+//	{
+//		osSignalWait(0x0001,osWaitForever);
+//		tab[0] = registreCommand1;
+//		tab[1] = registreCommand2;
+//	
+//		// Ecriture vers registre esclave : START + ADDR(W) + 1W_DATA + 1W_DATA + STOP
+//		Driver_I2C0.MasterTransmit (SLAVE_I2C_ADDR , tab, 2, false);		// false = avec stop
+//		while (Driver_I2C0.GetStatus().busy == 1);	// attente fin transmission
+//		osSignalSet(ID_tache2,0x0001);
+//		osDelay(osWaitForever);
+//	}
+//}
+
+//void tache2(void const* argument)
+//{
+//	uint8_t tab[10];
+//	
+//	while(1)
+//	{	
+//		osSignalWait(0x0001,osWaitForever);
+//		
+//		tab[0] = registreCommand3;
+//		
+//		// Ecriture vers registre esclave : START + ADDR(W) + 1W_DATA + 1W_DATA + STOP
+//		Driver_I2C0.MasterTransmit (SLAVE_I2C_ADDR	, tab, 1, false);		// false = avec stop
+//		while (Driver_I2C0.GetStatus().busy == 1);	// attente fin transmission
+//		
+//		osDelay(2);
+//		osSignalSet(ID_tache3,0x0001);
+//		osDelay(50);
+//	}
+//}
+
+//void tache3(void const* argument)
+//{
+
+//	uint8_t tab[10];
+//	
+//	
+//	while(1)
+//	{
+//		osSignalWait(0x0001,osWaitForever);
+//		Driver_I2C0.MasterReceive (SLAVE_I2C_ADDR, tab,6, false);		// false = avec stop
+//		while (Driver_I2C0.GetStatus().busy == 1);	// attente fin transmission
+
+//		osDelay(10);
+//		osSignalSet(ID_tache2,0x0001);
+//		
+//	}
+//}
+
+//void tache4(void const* argument)
+//{
+
+//	while(1)
+//	{
+//		
+////		Driver_USART1.Send("A hhtrhrjf",30);
+//	}
+//}
+void tache5(void const* argument)
+{
+	char tab;
+	char *ptr;
+	
+	while(1)
+	{
+		ptr=osMailAlloc(ID_BAL,osWaitForever);
+		Driver_USART1.Receive(&tab,1);
+		*ptr=tab;
+		osMailPut(ID_BAL,ptr);
+	}
+}
+
+void tache6(void const* argument)
+{
+	
+	char *recep, valeur_recue;
+	osEvent EVretour;
+	
+	
+	while(1)
+	{
+		osSignalWait(0x0001,osWaitForever);
+		EVretour=osMailGet(ID_BAL, osWaitForever);
+		recep=EVretour.value.p;
+		valeur_recue =*recep;
+		osMailFree(ID_BAL,recep);
+		
+		
+		switch(valeur_recue)
+				{
+					case 'A': // Avancer
+					{
+						LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN | (0<<16)| (1<<17);
+						
+						direction= 'A';
+						
+					break;
+					}
+
+					case 'P': // Avancer droite
+					{
+						LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN | (0<<16)| (1<<17);
+						
+						direction= 'D';		
+						
+					break;
+					}
+
+					case 'O': // Avancer gauche
+					{
+						LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN | (0<<16)| (1<<17);
+						
+						direction= 'G';				
+						
+					break;
+					}
+
+					case 'D': // Droite
+					{
+						LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN | (1<<16)| (1<<17);
+								
+						direction= 'D';	
+					break;
+					}
+
+					case 'G': // Gauche
+					{
+						LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN | (1<<16)| (1<<17);
+						
+						direction= 'G';	
+						
+					break;
+					}
+					
+					case 'M': // Reculer droite
+					{
+						LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN | (1<<16)| (0<<17);
+						
+						direction= 'D';	
+						
+					break;
+					}
+					
+					case 'L': // Reculer gauche
+					{
+						LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN | (1<<16)| (0<<17);
+								
+						direction= 'G';	
+						
+					break;
+					}
+					
+					case 'R': // Reculer
+					{
+						LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN | (1<<16)| (0<<17);	
+						
+						direction= 'A';
+						
+					break;
+					}
+					
+					case 'S': // Stop
+					{
+						LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN | (1<<16)| (1<<17);
+		
+						direction= 'A';
+						
+					break;
+					}	
+					
+				}
+		
+	}
+}
+
+
+//osThreadDef (tache1,osPriorityNormal,1,0);
+
+//osThreadDef (tache2,osPriorityNormal,1,0);
+
+//osThreadDef (tache3,osPriorityNormal,1,0);
+
+//osThreadDef (tache4,osPriorityNormal,1,0);
+
+osThreadDef (tache5,osPriorityNormal,1,0);
+
+osThreadDef (tache6,osPriorityNormal,1,0);
+
+void Init_I2C(void){
+	Driver_I2C0.Initialize(NULL);
+	Driver_I2C0.PowerControl(ARM_POWER_FULL);
+	Driver_I2C0.Control(	ARM_I2C_BUS_SPEED,				// 2nd argument = d�bit
+							ARM_I2C_BUS_SPEED_STANDARD  );	// 100 kHz
+	Driver_I2C0.Control(	ARM_I2C_BUS_CLEAR,0 );
+}
+
+void Init_LCD(void){
+	GLCD_Initialize();
+	GLCD_ClearScreen();
+	GLCD_SetFont(&GLCD_Font_16x24);
+	GLCD_SetForegroundColor(GLCD_COLOR_BLACK);
+}
+void Init_UART(void){
+	Driver_USART1.Initialize(uart_nun);
+	Driver_USART1.PowerControl(ARM_POWER_FULL);
+	Driver_USART1.Control(	ARM_USART_MODE_ASYNCHRONOUS |
+							ARM_USART_DATA_BITS_8		|
+							ARM_USART_STOP_BITS_1		|
+							ARM_USART_PARITY_NONE		|
+							ARM_USART_FLOW_CONTROL_NONE,
+							115200);
+	Driver_USART1.Control(ARM_USART_CONTROL_TX,1);
+	Driver_USART1.Control(ARM_USART_CONTROL_RX,1);
+}
+
+
+void Init_MOTEUR1(void){
+	
+	LPC_SC->PCONP = LPC_SC->PCONP | 0x00000040; 				// Enable PWM1
+	
+	LPC_PWM1->MCR = LPC_PWM1->MCR | 0x00000002;					// Compteur relanc� quand MR0 repasse � 0
+	
+	LPC_PWM1->PR = 0; 																	// Prescaler
+	LPC_PWM1->MR0 = 1249; 															// MR0
+	
+	LPC_PINCON->PINSEL7 = LPC_PINCON->PINSEL7| 3<<18; 	// Validation des sorties PWM 1.2 
+	
+	LPC_PWM1->LER = LPC_PWM1->LER | 0x0000000F;					// Compteurs des PWMs relanc�s quand MR passe � 0 "bit 0 = MR0" 
+
+	LPC_PWM1->PCR = LPC_PWM1->PCR | 1<<10; 							// Autorise les sorties PWM/2 bits 10 
+	
+	LPC_PWM1->MR2 =600;																	// Choix du rapport cyclique
+
+	LPC_PWM1->TCR = 1; 																	// Validation de timer et reset counter 
+	
+	LPC_GPIO0->FIODIR = LPC_GPIO0->FIODIR | (1<<16)| (1<<17)| (1<<18)| (1<<19);
+	
+	LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN | (1<<18)| (1<<19);
+	
+	
+}
+
+void Init_MOTEUR2(void){
+	
+	LPC_GPIO3->FIODIR = LPC_GPIO3->FIODIR | (1<<26);
+	
+	LPC_TIM0->PR=0;
+	LPC_TIM0->MR0=37500-1;
+	
+	LPC_TIM0->MCR = LPC_TIM0->MCR | (3<<0);
+	
+	LPC_TIM0->TCR = 1;
+	
+}
+
+
+
+
+/*
+ * main: initialize and start the system
+ */
+
+
+
+int main (void) {
+  osKernelInitialize ();                    // initialize CMSIS-RTOS
+
+  // initialize peripherals here
+	Init_I2C();
+	Init_LCD();
+	Init_UART();
+	Init_MOTEUR1();
+	Init_MOTEUR2();
+	GLCD_Initialize();
+	GLCD_ClearScreen();
+	GLCD_SetFont(&GLCD_Font_16x24);
+	
+	
+	NVIC_SetPriority(TIMER0_IRQn,0);
+	NVIC_EnableIRQ(TIMER0_IRQn);		
+	
+  // create 'thread' functions that start executing,
+  // example: tid_name = osThreadCreate (osThread(name), NULL);
+//	ID_tache1=osThreadCreate (osThread (tache1),NULL);
+//	ID_tache2=osThreadCreate (osThread (tache2),NULL);
+//	ID_tache3=osThreadCreate (osThread (tache3),NULL);
+//	ID_tache4=osThreadCreate (osThread (tache4),NULL);
+	ID_tache5=osThreadCreate (osThread (tache5),NULL);
+	ID_tache6=osThreadCreate (osThread (tache6),NULL);
+	
+	ID_BAL=osMailCreate(osMailQ(Bal1),NULL);
+	
+  osKernelStart ();                         // start thread execution 
+	osSignalSet(ID_tache5,0x0001);
+	osDelay(osWaitForever);
+	return 0;
+}
+
+
+void TIMER0_IRQHadler (void)
+{
+	LPC_TIM0->IR= LPC_TIM0->IR| (1<<0);	
+	
+	switch(direction)
+			{
+				case 'A': // Avancer
+				{
+					if(level==1)
+						{
+							LPC_TIM0->MR0=462688-1;
+							level=0;
+						}
+						else
+						{
+							LPC_TIM0->MR0=37500-1;
+							level=1;
+						}
+					
+				break;
+				}
+
+				case 'D': // Avancer droite
+				{
+					if(level==1)
+						{
+							LPC_TIM0->MR0=474925-1;
+							level=0;
+						}
+						else
+						{
+							LPC_TIM0->MR0=25000-1;
+							level=1;
+						}		
+				break;
+				}
+
+				case 'G': // Avancer gauche
+				{
+					if(level==1)
+						{
+							LPC_TIM0->MR0=450450-1;
+							level=0;
+						}
+						else
+						{
+							LPC_TIM0->MR0=50000-1;
+							level=1;
+						}	
+				break;
+				}
+
+			}
+}
