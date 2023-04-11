@@ -1,2 +1,5 @@
+datasheet :
 https://wiki.seeedstudio.com/Grove-125KHz_RFID_Reader/
 
+ID carte RFID:
+0D0093641BE1
