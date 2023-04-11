@@ -39,13 +39,18 @@ int main (void){
 
 
 void tache1(void const *argument) {
-	uint8_t tab_W[64];
-	uint8_t tab_R[64];
+	char tab_W[64];
+	char tab_R[64];
 	
-	while(Driver_USART1.GetStatus().tx_busy == 1); // attente buffer TX vide
-	Driver_USART1.Send(tab_W,16);
+//	while(Driver_USART1.GetStatus().tx_busy == 1); // attente buffer TX vide
+//	Driver_USART1.Send(tab_W,16);
 		
 	Driver_USART1.Receive(tab_R,12);
 	while (Driver_USART1.GetRxCount() <1) ; // on attend que 1 case soit pleine
 	
+	// ID tag : 0D0093641BE1 (en ASCII)
+	if((tab_R[0]==0x30) & (tab_R[1]==0x44) & (tab_R[2]==0x30) & (tab_R[3]==0x30) & (tab_R[4]==0x39) & (tab_R[5]==0x33) & (tab_R[6]==0x36) & (tab_R[7]==0x34) & (tab_R[8]==0x31) & (tab_R[9]==0x42) & (tab_R[10]==0x45) & (tab_R[11]==0x31)){
+		
+		
+	}
 }
