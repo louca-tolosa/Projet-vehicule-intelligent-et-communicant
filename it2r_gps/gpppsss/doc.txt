@@ -1,0 +1,9 @@
+04/04 - deuxième séance du sprint2 :
+
+le switch case de la tache1 ne recommence pas en continue !!!
+
+chose à faire pour la prochiane fois :
+- enlever la variable globale data et la mettre dans la tache1 puis faire la boite au lettre pour l'envoyer à la tache2
+- faire la map --> demander si on doit faire la map du batG ou de l'iut ou jsp
+- essayer de faire fonctionner le switch case de la tache1
+
