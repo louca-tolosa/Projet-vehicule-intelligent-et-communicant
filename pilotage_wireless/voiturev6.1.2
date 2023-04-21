@@ -1,0 +1,332 @@
+/*----------------------------------------------------------------------------
+ * CMSIS-RTOS 'main' function template
+ *---------------------------------------------------------------------------*/
+
+#define osObjectsPublic                     // define objects in main module
+#include "osObjects.h"                      // RTOS object definitions
+#include "GPIO_LPC17xx.h"               // Keil::Device:GPIO
+#include "LPC17xx.h"                    // Device header
+#include "PIN_LPC17xx.h"                // Keil::Device:PIN
+#include "Driver_I2C.h"                 // ::CMSIS Driver:I2C
+#include "Board_GLCD.h"                 // ::Board Support:Graphic LCD
+#include "GLCD_Config.h"                // Keil.MCB1700::Board Support:Graphic LCD
+#include "stdio.h"
+#include "Driver_USART.h"               // ::CMSIS Driver:USART
+
+extern ARM_DRIVER_I2C Driver_I2C0;
+extern ARM_DRIVER_USART Driver_USART1;
+extern GLCD_FONT GLCD_Font_6x8;
+extern GLCD_FONT GLCD_Font_16x24;
+
+
+osThreadId ID_uart_bluetooth;
+osThreadId ID_envoiedeplacement;
+
+char direction[1];
+int level=0;
+
+void uart_bluetooth(void const* argument)
+{
+	char mouvement[5];
+	char texte1[50];
+	
+	
+	
+	osSignalWait(0x0001,osWaitForever);
+	
+	while(1)
+	{
+		
+		
+		Driver_USART1.Receive(mouvement,1);
+		osSignalWait(0x0002,osWaitForever);
+		
+		sprintf(texte1,"mouvement:  %c",mouvement[0]);
+		GLCD_DrawString(10, 100, texte1);
+		
+		
+
+		
+		switch(mouvement[0])
+				{
+					case 'A': // Avancer
+					{
+						LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN ^ (1<<16)| (1<<17);
+						
+						direction[0]= 'M';
+						
+					break;
+					}
+
+					case 'P': // Avancer droite
+					{
+						LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN ^ (1<<16)| (1<<17);
+						
+						direction[0]= 'D';		
+						
+					break;
+					}
+
+					case 'O': // Avancer gauche
+					{	
+						LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN ^ (1<<16)| (1<<17);
+						
+						direction[0]= 'G';				
+						
+					break;
+					}
+
+					case 'D': // Droite
+					{
+						LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN | (1<<16)| (1<<17);
+								
+						direction[0]= 'D';	
+					break;
+					}
+
+					case 'G': // Gauche
+					{
+						LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN | (1<<16)| (1<<17);
+						
+						direction[0]= 'G';	
+						
+					break;
+					}
+					
+					case 'M': // Reculer droite
+					{
+						LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN | (1<<16) ^ (1<<17);
+						
+						direction[0]= 'D';	
+						
+					break;
+					}
+					
+					case 'L': // Reculer gauche
+					{
+						LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN | (1<<16)^ (1<<17);
+								
+						direction[0]= 'G';	
+						
+					break;
+					}
+					
+					case 'R': // Reculer
+					{
+						LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN | (1<<16)^ (1<<17);	
+						
+						direction[0]= 'M';
+						
+					break;
+					}
+					
+					case 'S': // Stop
+					{
+						LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN | (1<<16)| (1<<17);
+		
+						direction[0]= 'M';
+						
+					break;
+					}	
+					default:
+					break;
+					
+				}
+		
+		
+		sprintf(texte1,"direction:  %c",direction[0]);
+		GLCD_DrawString(10, 140, texte1);
+			
+		
+
+	}
+}
+void envoiedeplacement(void const* argument)
+{
+
+	
+	while(1)
+	{	
+		
+		
+		
+		
+		osDelay(osWaitForever);
+	}
+}
+
+
+
+void uart_nun (uint32_t event){
+	
+	if (event & ARM_USART_EVENT_RECEIVE_COMPLETE)
+	{
+			osSignalSet(ID_uart_bluetooth,0x0002);
+	}
+
+}
+
+
+osThreadDef (uart_bluetooth,osPriorityNormal,1,0);
+
+osThreadDef (envoiedeplacement,osPriorityNormal,1,0);
+
+void Init_UART(void){
+	Driver_USART1.Initialize(uart_nun);
+	Driver_USART1.PowerControl(ARM_POWER_FULL);
+	Driver_USART1.Control(	ARM_USART_MODE_ASYNCHRONOUS |
+							ARM_USART_DATA_BITS_8		|
+							ARM_USART_STOP_BITS_1		|
+							ARM_USART_PARITY_NONE		|
+							ARM_USART_FLOW_CONTROL_NONE,
+							115200);
+	Driver_USART1.Control(ARM_USART_CONTROL_TX,1);
+	Driver_USART1.Control(ARM_USART_CONTROL_RX,1);
+}
+
+void Init_MOTEUR1(void){
+	
+	LPC_SC->PCONP = LPC_SC->PCONP | 0x00000040; 				// Enable PWM1
+	
+	LPC_PWM1->MCR = LPC_PWM1->MCR | 0x00000002;					// Compteur relanc� quand MR0 repasse � 0
+	
+	LPC_PWM1->PR = 0; 																	// Prescaler
+	LPC_PWM1->MR0 = 1249; 															// MR0
+	
+	LPC_PINCON->PINSEL7 = LPC_PINCON->PINSEL7| 3<<18; 	// Validation des sorties PWM 1.2 
+	
+	LPC_PWM1->LER = LPC_PWM1->LER | 0x0000000F;					// Compteurs des PWMs relanc�s quand MR passe � 0 "bit 0 = MR0" 
+
+	LPC_PWM1->PCR = LPC_PWM1->PCR | 1<<10; 							// Autorise les sorties PWM/2 bits 10 
+	
+	LPC_PWM1->MR2 =700;																	// Choix du rapport cyclique
+
+	LPC_PWM1->TCR = 1; 																	// Validation de timer et reset counter 
+	
+	LPC_GPIO0->FIODIR = LPC_GPIO0->FIODIR | (1<<16)| (1<<17)| (1<<18)| (1<<19);
+	
+	LPC_GPIO0->FIOPIN = LPC_GPIO0->FIOPIN | (1<<18)| (1<<19);
+	
+	
+}
+
+void Init_MOTEUR2(void){
+	
+	LPC_GPIO3->FIODIR = LPC_GPIO3->FIODIR | (1<<26);
+	
+	LPC_TIM0->PR=0;
+	LPC_TIM0->MR0=37500-1;
+	
+	LPC_TIM0->MCR = LPC_TIM0->MCR | (3<<0);
+	
+	LPC_TIM0->TCR = 1;
+	
+}
+void Timer_Init(void){
+
+	LPC_GPIO3->FIODIR = LPC_GPIO3->FIODIR | (1<<26);
+	//LPC_SC->PCONP |= (1<<1); //allume le timer 0 (facultatif, d�j� allum� apr�s un reset)
+
+	LPC_TIM0->PR=0;
+	LPC_TIM0->MR0=250000-1;
+	
+	LPC_TIM0->MCR = LPC_TIM0->MCR | (3<<0);	/*reset counter si MR0=COUNTER + interrupt*/
+
+	LPC_TIM0->TCR = 1; //d�marre le comptage
+}
+void Init_LCD(void){
+	GLCD_Initialize();
+	GLCD_ClearScreen();
+	GLCD_SetFont(&GLCD_Font_6x8);
+	GLCD_SetForegroundColor(GLCD_COLOR_BLACK);
+}
+/*
+ * main: initialize and start the system
+ */
+int main (void) {
+  osKernelInitialize ();                    // initialize CMSIS-RTOS
+
+  // initialize peripherals here
+
+	
+	Init_LCD();
+	Init_UART();
+	Init_MOTEUR1();
+	Init_MOTEUR2();
+	
+	Timer_Init();
+	
+	NVIC_SetPriority(TIMER0_IRQn,6);
+	NVIC_EnableIRQ(TIMER0_IRQn);	
+
+	
+  // create 'thread' functions that start executing,
+  // example: tid_name = osThreadCreate (osThread(name), NULL);
+	ID_uart_bluetooth=osThreadCreate (osThread (uart_bluetooth),NULL);
+	ID_envoiedeplacement=osThreadCreate (osThread (envoiedeplacement),NULL);
+
+  osKernelStart ();                         // start thread execution 
+	osSignalSet(ID_uart_bluetooth,0x0001);
+	osDelay(osWaitForever);
+	return 0;
+}
+
+
+void TIMER0_IRQHandler (void)
+{
+	LPC_TIM0->IR= LPC_TIM0->IR| (1<<0);
+	
+	LPC_GPIO3->FIOPIN = LPC_GPIO3->FIOPIN ^ (1<<26);		// sortie P3.25	
+	
+	switch(direction[0])
+			{
+				case 'M': // Milieu
+				{
+					if(level==1)
+						{
+							LPC_TIM0->MR0=462688-1;
+							level=0;
+						}
+						else
+						{
+							LPC_TIM0->MR0=37500-1;
+							level=1;
+						}
+					
+				break;
+				}
+
+				case 'D': //  droite
+				{
+					if(level==1)
+						{
+							LPC_TIM0->MR0=474925-1;
+							level=0;
+						}
+						else
+						{
+							LPC_TIM0->MR0=25000-1;
+							level=1;
+						}		
+				break;
+				}
+
+				case 'G': // gauche
+				{
+					if(level==1)
+						{
+							LPC_TIM0->MR0=450450-1;
+							level=0;
+						}
+						else
+						{
+							LPC_TIM0->MR0=50000-1;
+							level=1;
+						}	
+				break;
+				}
+				default:
+					break;
+
+			}
+}
