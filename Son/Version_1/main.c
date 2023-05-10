@@ -48,11 +48,11 @@ void Tache1(void const * argument)
 	
 	while(1)
 	{
-		Send_DFP(0x03, 0x00, 0x01);
-		Send_DFP(0x41, 0x00, 0x00);
+		Send_DFP(0x03, 0x00, 0x01); //Selection de la piste n°1
+		Send_DFP(0x41, 0x00, 0x00); //replay de la piste 
 		osDelay(5000);
 		
-		Send_DFP(0x01, 0x00, 0x00);
+		Send_DFP(0x01, 0x00, 0x00); // passage a la piste suivante 
 		osDelay(5000);
 	}
 }
